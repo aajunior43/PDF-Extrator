@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Extrator de Texto PDF Aperfeiçoado</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f0f0f0; }
+        h1 { color: #333; }
+        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        input, button, textarea { width: 100%; padding: 10px; margin-top: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        #pageCount { margin-top: 10px; }
+        textarea { height: 150px; resize: vertical; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Extrator de Texto de PDF</h1>
+        <input type="file" id="fileInput" accept=".pdf" />
+        <p id="pageCount">Número de páginas: 0</p>
+        <div>
+            <button onclick="extractTextFromPage()">Extrair Texto da Página</button>
+            <input type="number" id="pageNumber" value="1" min="1" style="margin-left: 10px;" />
+        </div>
+        <div>
+            <button onclick="extractAllText()">Extrair Todo o Texto</button>
+        </div>
+        <textarea id="textContent" readonly></textarea>
+        <button onclick="copyExtractedText()">Selecionar Texto</button>
+        <p>Instruções: Use o botão para copiar o texto extraído para a área de transferência.</p>
+    </div>
+
+    <script>
+        let pdfDoc = null;
+
+        document.getElementById('fileInput').addEventListener('change', async function(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                alert('Por favor, selecione um arquivo PDF.');
+                return;
+            }
+            const fileReader = new FileReader();
+            fileReader.onload = async function() {
+                const typedArray = new Uint8Array(this.result);
+                try {
+                    pdfDoc = await pdfjsLib.getDocument(typedArray).promise;
+                    document.getElementById('pageCount').textContent = `Número de páginas: ${pdfDoc.numPages}`;
+                } catch (error) {
+                    console.error('Erro ao carregar o PDF:', error);
+                    alert('Falha ao carregar o PDF. Por favor, tente novamente.');
+                }
+            };
+            fileReader.readAsArrayBuffer(file);
+        });
+
+        async function extractTextFromPage() {
+            const pageNumber = parseInt(document.getElementById('pageNumber').value, 10);
+            if (!pdfDoc) {
+                alert('PDF não carregado.');
+                return;
+            }
+            if (pageNumber < 1 || pageNumber > pdfDoc.numPages) {
+                alert('Número de página inválido.');
+                return;
+            }
+            const page = await pdfDoc.getPage(pageNumber);
+            const textContent = await page.getTextContent();
+            const text = textContent.items.map(item => item.str).join(' ');
+            document.getElementById('textContent').value = text;
+        }
+
+        async function extractAllText() {
+            if (!pdfDoc) {
+                alert('PDF não carregado.');
+                return;
+            }
+            let fullText = '';
+            for (let num = 1; num <= pdfDoc.numPages; num++) {
+                const page = await pdfDoc.getPage(num);
+                const textContent = await page.getTextContent();
+                fullText += textContent.items.map(item => item.str).join(' ') + '\n\n';
+            }
+            document.getElementById('textContent').value = fullText;
+        }
+
+        function copyExtractedText() {
+            const textArea = document.getElementById('textContent');
+            textArea.select();
+            textArea.setSelectionRange(0, textArea.value.length);
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                // O texto já está selecionado, não é necessário copiar automaticamente
+                alert('Texto selecionado! Copie manualmente usando Ctrl + C (ou Command + C no macOS).');
+            } else {
+                alert('Seu navegador não suporta o acesso à área de transferência. Por favor, copie o texto manualmente.');
+            }
+        }
+    </script>
+</body>
+</html>
